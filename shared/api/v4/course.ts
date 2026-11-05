@@ -158,6 +158,23 @@ export const Instructor = z.object({
 });
 export type Instructor = z.infer<typeof Instructor>;
 
+/**
+ * An instructor's scores on Rate My Professors. Instructors without any reviews
+ * or that we can't confidently identify don't have one of these at all.
+ */
+export const InstructorRating = z.object({
+    // same as Instructor.name, without any leading or trailing whitespace
+    name: z.string(),
+    // the id in ratemyprofessors.com/professor/<id>
+    rmpId: z.number().int().positive(),
+    avgRating: z.number().min(0).max(5),
+    avgDifficulty: z.number().min(0).max(5),
+    numRatings: z.number().int().positive(),
+    // null if none of the reviews answered this question
+    wouldTakeAgainPercent: z.number().min(0).max(100).nullable(),
+});
+export type InstructorRating = z.infer<typeof InstructorRating>;
+
 export const Section = z.object({
     identifier: SectionIdentifier,
     courseAreas: z.string().array(),

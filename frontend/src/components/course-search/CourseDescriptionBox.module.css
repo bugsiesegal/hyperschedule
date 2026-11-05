@@ -85,6 +85,12 @@
             }
         }
 
+        &.instructors .rating {
+            margin-left: 0.5em;
+            font-size: 0.875em;
+            white-space: nowrap;
+        }
+
         &.areas li {
             &.hmc,
             &.ptz {

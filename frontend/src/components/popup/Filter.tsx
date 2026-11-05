@@ -6,6 +6,7 @@ import useStore from "@hooks/store";
 import { memo, Fragment } from "react";
 import classNames from "classnames";
 import Slider from "@components/common/Slider";
+import { useInstructorRatings } from "@hooks/api/query";
 
 type FilterSpec = {
     name: string;
@@ -69,7 +70,30 @@ const filterSpecs: { [k in Search.FilterKey]: FilterSpec } = {
         name: "Status",
         example: ["Open", "Reopened", "Closed"],
     },
+    [Search.FilterKey.Rating]: {
+        name: "Professor rating",
+        example: [">=4", "3.5-5"],
+    },
+    [Search.FilterKey.Difficulty]: {
+        name: "Professor difficulty",
+        example: ["<=3", "2-3.5"],
+    },
+    [Search.FilterKey.TakeAgain]: {
+        name: "Would take again (%)",
+        example: [">=80", "50-100"],
+    },
+    [Search.FilterKey.Reviews]: {
+        name: "Number of reviews",
+        example: [">=10"],
+    },
 };
+
+const ratingFilterKeys: readonly Search.FilterKey[] = [
+    Search.FilterKey.Rating,
+    Search.FilterKey.Difficulty,
+    Search.FilterKey.TakeAgain,
+    Search.FilterKey.Reviews,
+];
 
 export default memo(function Filter() {
     const setPopup = useStore((store) => store.setPopup);
@@ -80,6 +104,8 @@ export default memo(function Filter() {
     const setHideConflictingSections = useStore(
         (store) => store.setHideConflictingSections,
     );
+    // like the sort, rating filters are only offered when there are ratings
+    const hasRatings = (useInstructorRatings().data?.size ?? 0) > 0;
 
     return (
         <div>
@@ -105,53 +131,66 @@ export default memo(function Filter() {
                         Search.FilterKey,
                         FilterSpec,
                     ][]
-                ).map(([key, spec], index) => {
-                    return (
-                        <Fragment key={key}>
-                            <span
-                                className={Css.line}
-                                style={{
-                                    gridRow: index + 2,
-                                }}
-                            />
-                            <div className={Css.nameWrapper}>
-                                <span className={Css.name}>{spec.name}</span>
-                                <button
-                                    className={classNames(
-                                        AppCss.defaultButton,
-                                        Css.applyButton,
-                                    )}
-                                    onClick={() => {
-                                        setPopup(null);
-                                        addFilter({ key, data: null });
+                )
+                    .filter(
+                        ([key]) =>
+                            hasRatings || !ratingFilterKeys.includes(key),
+                    )
+                    .map(([key, spec], index) => {
+                        return (
+                            <Fragment key={key}>
+                                <span
+                                    className={Css.line}
+                                    style={{
+                                        gridRow: index + 2,
                                     }}
-                                >
-                                    Apply
-                                </button>
-                            </div>
-                            <span className={Css.typeable}>
-                                <code>{key}:</code>
-                            </span>
+                                />
+                                <div className={Css.nameWrapper}>
+                                    <span className={Css.name}>
+                                        {spec.name}
+                                    </span>
+                                    <button
+                                        className={classNames(
+                                            AppCss.defaultButton,
+                                            Css.applyButton,
+                                        )}
+                                        onClick={() => {
+                                            setPopup(null);
+                                            addFilter({ key, data: null });
+                                        }}
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
+                                <span className={Css.typeable}>
+                                    <code>{key}:</code>
+                                </span>
 
-                            <div className={Css.examples}>
-                                {spec.example.map((s) => (
-                                    <div className={Css.bubbleWrapper} key={s}>
-                                        <ExampleFilterBubble
-                                            filterKey={key}
-                                            data={s}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </Fragment>
-                    );
-                })}
+                                <div className={Css.examples}>
+                                    {spec.example.map((s) => (
+                                        <div
+                                            className={Css.bubbleWrapper}
+                                            key={s}
+                                        >
+                                            <ExampleFilterBubble
+                                                filterKey={key}
+                                                data={s}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </Fragment>
+                        );
+                    })}
             </div>
 
             <div>
                 All filters are case-insensitive. When multiple filters are
                 specified, only courses matching all the criteria will be shown
                 (logical AND).
+                {hasRatings
+                    ? " Professor filters use Rate My Professors and leave out courses without a rating. When a course has more than one rated professor, their scores are averaged and their reviews are added up."
+                    : ""}
             </div>
         </div>
     );

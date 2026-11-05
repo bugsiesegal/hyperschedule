@@ -9,6 +9,7 @@ import Dropdown from "@components/common/Dropdown";
 
 import {
     useCourseAreaDescription,
+    useInstructorRatings,
     useSectionsForTermsQuery,
 } from "@hooks/api/query";
 import { useAllTerms } from "@hooks/term";
@@ -19,6 +20,7 @@ import {
     useActiveSectionsQuery,
 } from "@hooks/section";
 import * as Search from "@lib/search";
+import { sortSections } from "@lib/rating";
 import { PopupOption } from "@lib/popup";
 
 import SearchControls from "@components/course-search/SearchControls";
@@ -52,6 +54,7 @@ export default memo(function CourseSearch() {
         (store) => store.conflictingSectionsOptions,
     );
     const creditOptions = useStore((store) => store.creditOptions);
+    const instructorRatings = useInstructorRatings().data;
 
     const filteredSections: APIv4.Section[] | undefined = React.useMemo(() => {
         if (sections === undefined) return undefined;
@@ -63,9 +66,10 @@ export default memo(function CourseSearch() {
                       s,
                       searchFilters.map((s) => s.filter),
                       creditOptions.useNonHMCCredits,
+                      instructorRatings,
                   ),
               );
-    }, [searchFilters, sections, creditOptions]);
+    }, [searchFilters, sections, creditOptions, instructorRatings]);
 
     const sectionsToShow: APIv4.Section[] | undefined = React.useMemo(() => {
         if (searchText === "" && !hideConflictingSections)
@@ -97,7 +101,15 @@ export default memo(function CourseSearch() {
         hideConflictingSections,
         conflictingSectionsOptions,
         creditOptions,
+        instructorRatings,
     ]);
+
+    const sectionSort = useStore((store) => store.sectionSort);
+    const sortedSectionsToShow: APIv4.Section[] | undefined =
+        React.useMemo(() => {
+            if (sectionsToShow === undefined) return undefined;
+            return sortSections(sectionsToShow, sectionSort, instructorRatings);
+        }, [sectionsToShow, sectionSort, instructorRatings]);
 
     const { enable, range } = useStore(
         (store) => store.multiTermsSearchOptions,
@@ -122,6 +134,7 @@ export default memo(function CourseSearch() {
                               s,
                               searchFilters.map((s) => s.filter),
                               creditOptions.useNonHMCCredits,
+                              instructorRatings,
                           ),
                       );
 
@@ -143,14 +156,15 @@ export default memo(function CourseSearch() {
             enable,
             range,
             creditOptions,
+            instructorRatings,
         ]);
 
     return (
         <div className={Css.container}>
             <SearchControls />
-            {sectionsToShow !== undefined ? (
+            {sortedSectionsToShow !== undefined ? (
                 <CourseSearchResults
-                    sections={sectionsToShow}
+                    sections={sortedSectionsToShow}
                     multiTermsSearchEnabled={enable}
                     multiTermsSections={matchingMultiTermsSections}
                 />
@@ -201,6 +215,12 @@ const CourseSearchResults = memo(function CourseSearchResults(props: {
     const expandHeight = useStore((store) => store.expandHeight);
 
     const [expandIndex, setExpandIndex] = React.useState<number | null>(null);
+
+    // the whole point of changing the sort is to see what's now at the top
+    const sectionSort = useStore((store) => store.sectionSort);
+    React.useEffect(() => {
+        viewportRef.current?.scrollTo(0, 0);
+    }, [sectionSort]);
 
     const [indexStart, indexEnd] = React.useMemo(
         () =>

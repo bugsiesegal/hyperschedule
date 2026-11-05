@@ -1,5 +1,8 @@
 import * as APIv4 from "hyperschedule-shared/api/v4";
-import { useCourseAreaDescription } from "@hooks/api/query";
+import {
+    useCourseAreaDescription,
+    useInstructorRatings,
+} from "@hooks/api/query";
 import { useOfferingHistoryLookup } from "@hooks/history";
 
 import { formatTime12 } from "@lib/time";
@@ -8,6 +11,7 @@ import Css from "./CourseDescriptionBox.module.css";
 import * as Feather from "react-feather";
 import { combineLocations } from "@lib/schedule";
 import { computeNonMuddCredits, computeMuddCredits } from "@lib/credits";
+import { rmpProfessorUrl } from "@lib/rating";
 import SectionStatusBadge from "@components/common/SectionStatusBadge";
 import { useState } from "react";
 import { useAllTerms } from "@hooks/term";
@@ -50,11 +54,35 @@ const campusCss = [
 // 3 years if offered every semester
 const HISTORY_ENTRY_CUTOFF = 6;
 
+function InstructorRatingLink(props: { rating: APIv4.InstructorRating }) {
+    const { avgRating, avgDifficulty, numRatings, wouldTakeAgainPercent } =
+        props.rating;
+    return (
+        <a
+            className={Css.rating}
+            href={rmpProfessorUrl(props.rating)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View on Rate My Professors"
+        >
+            <Feather.Star size="1em" fill="currentColor" />{" "}
+            {avgRating.toFixed(1)}/5 from {numRatings} review
+            {numRatings === 1 ? "" : "s"}, {avgDifficulty.toFixed(1)}/5
+            difficulty
+            {wouldTakeAgainPercent === null
+                ? ""
+                : `, ${Math.round(wouldTakeAgainPercent)}% would take again`}{" "}
+            <Feather.ExternalLink size="1em" />
+        </a>
+    );
+}
+
 export default memo(function CourseDescriptionBox(props: {
     section: APIv4.Section;
     showStatus: boolean;
 }) {
     const descriptions = useCourseAreaDescription().data;
+    const instructorRatings = useInstructorRatings().data;
     const offeringHistory = useOfferingHistoryLookup();
     const allTerms = useAllTerms();
     let minYear = CURRENT_TERM.year;
@@ -126,9 +154,19 @@ export default memo(function CourseDescriptionBox(props: {
             <section className={Css.instructors}>
                 <h3>Instructor{instructors.length > 1 ? "s" : ""}</h3>
                 <ul>
-                    {instructors.map((name) => (
-                        <li key={name}>{name}</li>
-                    ))}
+                    {instructors.map((name) => {
+                        const rating = instructorRatings?.get(name);
+                        return (
+                            <li key={name}>
+                                {name}
+                                {rating === undefined ? (
+                                    <></>
+                                ) : (
+                                    <InstructorRatingLink rating={rating} />
+                                )}
+                            </li>
+                        );
+                    })}
                 </ul>
             </section>
             <section className={Css.areas}>

@@ -49,7 +49,7 @@
     & .status {
         display: grid;
         grid-column-gap: 0.5em;
-        grid-template-areas: "perm badge" "seats seats";
+        grid-template-areas: "rating perm badge" "seats seats seats";
 
         & .badge {
             justify-self: end;
@@ -71,7 +71,7 @@
         }
 
         & .status {
-            grid-template-areas: "badge perm seats";
+            grid-template-areas: "rating badge perm seats";
             grid-column-gap: 0;
         }
     }
@@ -84,6 +84,50 @@
 
         & .seats {
             grid-area: seats;
+        }
+
+        & .rating {
+            grid-area: rating;
+            display: flex;
+            align-items: center;
+            gap: 0.25em;
+            justify-self: start;
+        }
+
+        /* lines the scores up with each other, even in sections without one */
+        & .ratingWidth {
+            width: 5ex;
+        }
+
+        & .ratingStar {
+            flex-shrink: 0;
+        }
+
+        & .ratingScore {
+            font-weight: 500;
+        }
+
+        /* the title needs the space more than the number of reviews does, which
+           is also in the tooltip and the course details */
+        & .ratingCount {
+            display: none;
+        }
+
+        @media (--medium-and-up) {
+            & .ratingWidth {
+                margin-left: 0.5em;
+                width: 6ex;
+            }
+        }
+
+        @media (--viewport-large) {
+            & .ratingWidth {
+                width: 11ex;
+            }
+
+            & .ratingCount {
+                display: inline;
+            }
         }
 
         & .seatsFilled {

@@ -12,6 +12,16 @@ export const CreditFilterBubble = memo(
 export const CourseNumberFilterBubble = memo(
     createRangeFilterBubble(parseIntegerExp, 0.1),
 );
+// used for both rating and difficulty, which are out of 5
+export const ScoreFilterBubble = memo(
+    createRangeFilterBubble(parseScoreExp, 0.01),
+);
+export const PercentFilterBubble = memo(
+    createRangeFilterBubble(parsePercentExp, 0.1),
+);
+export const ReviewCountFilterBubble = memo(
+    createRangeFilterBubble(parseIntegerExp, 0.1),
+);
 
 const timeRegex =
     /^(?<hour>\d{1,2})(?::(?<minute>[0-5][0-9]))?\s*(?<ampm>am|pm)?$/i;
@@ -68,6 +78,31 @@ function parseIntegerExp(value: string): number | null {
     const n = parseInt(value, 10);
     // this really shouldn't happen because of the regex but we still check just in case
     if (Number.isNaN(n)) return null;
+
+    return n;
+}
+
+const scoreRegex = /^\d?(\.\d{1,2})?$/;
+
+function parseScoreExp(value: string): number | null {
+    if (value === "") return null;
+    const match = value.match(scoreRegex);
+    if (match === null) return null;
+
+    const n = parseFloat(value);
+    if (Number.isNaN(n) || n > 5) return null;
+
+    return n;
+}
+
+const percentRegex = /^(\d{1,3})%?$/;
+
+function parsePercentExp(value: string): number | null {
+    const match = value.match(percentRegex);
+    if (match === null) return null;
+
+    const n = parseInt(match[1]!, 10);
+    if (n > 100) return null;
 
     return n;
 }

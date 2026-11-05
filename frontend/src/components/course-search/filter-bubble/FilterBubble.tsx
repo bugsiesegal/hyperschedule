@@ -12,6 +12,9 @@ import {
     TimeFilterBubble,
     CreditFilterBubble,
     CourseNumberFilterBubble,
+    ScoreFilterBubble,
+    PercentFilterBubble,
+    ReviewCountFilterBubble,
 } from "./RangeFilter";
 import StatusBubble from "./StatusBubble";
 
@@ -41,6 +44,10 @@ const FilterBubbleInput: {
     [Search.FilterKey.Number]: CourseNumberFilterBubble,
     [Search.FilterKey.Half]: TextInputBubble,
     [Search.FilterKey.Status]: StatusBubble,
+    [Search.FilterKey.Rating]: ScoreFilterBubble,
+    [Search.FilterKey.Difficulty]: ScoreFilterBubble,
+    [Search.FilterKey.TakeAgain]: PercentFilterBubble,
+    [Search.FilterKey.Reviews]: ReviewCountFilterBubble,
 };
 
 // non-interactive example bubble used in the filter popup
