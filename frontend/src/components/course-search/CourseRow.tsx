@@ -14,8 +14,10 @@ import SectionStatusBadge from "@components/common/SectionStatusBadge";
 
 import { useUserStore } from "@hooks/store/user";
 import { useActiveScheduleLookup } from "@hooks/schedule";
+import { useInstructorRatings } from "@hooks/api/query";
 import useStore from "@hooks/store";
 import { sectionColorStyle } from "@lib/color";
+import { computeSectionRating } from "@lib/rating";
 import { toast } from "react-toastify";
 import { PopupOption } from "@lib/popup";
 import { useShallow } from "zustand/react/shallow";
@@ -105,6 +107,7 @@ export default memo(function CourseRow(props: {
                         </span>
                     </span>
                     <span className={Css.status}>
+                        <RatingLabel section={props.section} />
                         <SectionStatusBadge status={props.section.status} />
 
                         <span
@@ -165,6 +168,39 @@ export default memo(function CourseRow(props: {
                 </div>
             </div>
         </div>
+    );
+});
+
+const RatingLabel = memo(function RatingLabel(props: {
+    section: APIv4.Section;
+}) {
+    const ratings = useInstructorRatings().data;
+
+    // the label is always here so that the other status items don't get placed
+    // into its grid area, but it only takes up space if we have any ratings
+    if (ratings === undefined || ratings.size === 0)
+        return <span className={Css.rating} />;
+
+    const rating = computeSectionRating(props.section, ratings);
+    if (rating === null)
+        return <span className={classNames(Css.rating, Css.ratingWidth)} />;
+
+    const score = rating.avgRating.toFixed(1);
+    return (
+        <span
+            className={classNames(Css.rating, Css.ratingWidth)}
+            title={`Rate My Professors: ${score}/5 from ${rating.numRatings} review${
+                rating.numRatings === 1 ? "" : "s"
+            }`}
+        >
+            <Feather.Star
+                className={Css.ratingStar}
+                size="1em"
+                fill="currentColor"
+            />
+            <span className={Css.ratingScore}>{score}</span>
+            <span className={Css.ratingCount}>({rating.numRatings})</span>
+        </span>
     );
 });
 

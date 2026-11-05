@@ -16,12 +16,30 @@
         grid-template-rows: auto;
     }
 
+    &.withSort {
+        grid-template-areas:
+            "input input"
+            "term filter"
+            "sort sort";
+        grid-template-rows: auto 1.75em 1.75em;
+
+        @media (--medium-and-up) {
+            grid-template-areas: "term input sort filter";
+            grid-template-columns: auto 1fr auto auto;
+            grid-template-rows: auto;
+        }
+    }
+
     padding: 1rem;
     border-bottom: 1px solid var(--bg-1);
     transition: border-bottom-color var(--theme-transition-duration);
 
     & .termSelect {
         grid-area: term;
+    }
+
+    & .sortSelect {
+        grid-area: sort;
     }
 
     & .filterButton {

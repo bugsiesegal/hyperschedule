@@ -11,6 +11,7 @@ import { MAIN_STORE_NAME } from "@lib/constants";
 import type { AnnouncementID } from "@lib/announcements";
 import { produce } from "immer";
 import type { CourseColorTheme } from "@lib/color";
+import { SectionSort } from "@lib/rating";
 
 // we need this so we can correctly render filters with immutable keys.
 // without this there are subtle bugs with filter deletions
@@ -24,6 +25,7 @@ export type Store = WithSetters<{
     mainTab: MainTab;
     searchText: string;
     searchFilters: StoreFilter[];
+    sectionSort: SectionSort;
     hideConflictingSections: boolean;
     expandKey: APIv4.SectionIdentifier | null;
     expandHeight: number;
@@ -141,6 +143,10 @@ const initStore: StateCreator<Store> = (set, get) => {
             newFilters.splice(index, 1);
             set({ searchFilters: newFilters });
         },
+
+        sectionSort: SectionSort.Default,
+        setSectionSort: (sectionSort) =>
+            set({ sectionSort, expandKey: null, expandHeight: 0 }),
 
         expandKey: null,
         setExpandKey: (expandKey) => set({ expandKey }),

@@ -2,6 +2,11 @@ import * as APIv4 from "hyperschedule-shared/api/v4";
 import { computeMuddCredits, computeNonMuddCredits } from "@lib/credits";
 import { sectionsConflict } from "@lib/schedule";
 import { type ConflictingSectionsOptions } from "@hooks/store";
+import {
+    computeSectionRating,
+    type InstructorRatings,
+    type SectionRating,
+} from "@lib/rating";
 
 const tokensRegex = /[0-9]+|[a-z]+/g;
 
@@ -156,6 +161,10 @@ export enum FilterKey {
     Credits = "cred",
     Half = "half",
     Status = "status",
+    Rating = "rating",
+    Difficulty = "diff",
+    TakeAgain = "again",
+    Reviews = "reviews",
 }
 
 export const filterKeyRegexp = RegExp(
@@ -197,7 +206,40 @@ export type FilterData = {
     // we can technically use a range filter for half but probably shouldn't
     [FilterKey.Half]: TextFilter;
     [FilterKey.Status]: StatusFilter;
+    [FilterKey.Rating]: RangeFilter;
+    [FilterKey.Difficulty]: RangeFilter;
+    [FilterKey.TakeAgain]: RangeFilter;
+    [FilterKey.Reviews]: RangeFilter;
 };
+
+type RatingFilterKey =
+    | FilterKey.Rating
+    | FilterKey.Difficulty
+    | FilterKey.TakeAgain
+    | FilterKey.Reviews;
+
+/**
+ * the value is compared the same way it's shown, so that a 3.96 shown as 4.0
+ * counts as 4. null means there's nothing to compare, which never matches.
+ */
+function ratingFilterValue(
+    key: RatingFilterKey,
+    rating: SectionRating | null,
+): number | null {
+    if (rating === null) return null;
+    switch (key) {
+        case FilterKey.Rating:
+            return parseFloat(rating.avgRating.toFixed(1));
+        case FilterKey.Difficulty:
+            return parseFloat(rating.avgDifficulty.toFixed(1));
+        case FilterKey.TakeAgain:
+            return rating.wouldTakeAgainPercent === null
+                ? null
+                : Math.round(rating.wouldTakeAgainPercent);
+        case FilterKey.Reviews:
+            return rating.numRatings;
+    }
+}
 
 export type Filter = {
     [K in FilterKey]: {
@@ -210,7 +252,10 @@ export function filterSection(
     section: APIv4.Section,
     filters: Filter[],
     useNonHMCCredits: boolean,
+    ratings?: InstructorRatings,
 ): boolean {
+    // only computed if a rating filter needs it, null if the section has none
+    let sectionRating: SectionRating | null | undefined;
     // a section is a match iff all filters match
     for (const filter of filters) {
         if (!filter.data) continue;
@@ -368,6 +413,23 @@ export function filterSection(
                 if (section.status !== filter.data.status) {
                     return false;
                 }
+                break;
+            case FilterKey.Rating:
+            case FilterKey.Difficulty:
+            case FilterKey.TakeAgain:
+            case FilterKey.Reviews:
+                // still loading, so leave everything in rather than flash an
+                // empty list
+                if (ratings === undefined) break;
+                if (sectionRating === undefined)
+                    sectionRating = computeSectionRating(section, ratings);
+                const value = ratingFilterValue(filter.key, sectionRating);
+                if (value === null) return false;
+                if (filter.data.start !== null && value < filter.data.start)
+                    return false;
+                if (filter.data.end !== null && value > filter.data.end)
+                    return false;
+                break;
         }
     }
     return true;

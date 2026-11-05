@@ -2,6 +2,7 @@ import { describe, test, expect, afterAll, beforeAll } from "@jest/globals";
 import request from "supertest";
 import { app } from "../src/server";
 import { updateSections } from "../src/db/models/course";
+import { updateInstructorRatings } from "../src/db/models/instructor-rating";
 import { setupDbHooks } from "./db/hooks";
 import { testSectionV4, testSectionV3 } from "./test-data";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
@@ -50,5 +51,25 @@ describe("Course routes", () => {
             error: null,
             full: true,
         });
+    });
+
+    test("Route /v4/instructor-ratings", async () => {
+        const empty = await mockServer.get("/v4/instructor-ratings");
+        expect(empty.status).toEqual(200);
+        expect(empty.body).toStrictEqual([]);
+
+        const rating = {
+            name: "Test Person",
+            rmpId: 1,
+            avgRating: 4.5,
+            avgDifficulty: 3,
+            numRatings: 10,
+            wouldTakeAgainPercent: null,
+        };
+        await updateInstructorRatings([rating]);
+        const resp = await mockServer.get("/v4/instructor-ratings");
+        expect(resp.status).toEqual(200);
+        expect(resp.headers["content-type"]).toMatch(/json/);
+        expect(resp.body).toStrictEqual([rating]);
     });
 });

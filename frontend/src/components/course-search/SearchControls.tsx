@@ -13,9 +13,17 @@ import Dropdown from "@components/common/Dropdown";
 import FilterBubble from "@components/course-search/filter-bubble/FilterBubble";
 import * as Search from "@lib/search";
 import { useUserStore } from "@hooks/store/user";
+import { useInstructorRatings } from "@hooks/api/query";
+import { SectionSort } from "@lib/rating";
 import AppCss from "@components/App.module.css";
 import classNames from "classnames";
 import { memo } from "react";
+
+const SECTION_SORTS: readonly { sort: SectionSort; label: string }[] = [
+    { sort: SectionSort.Default, label: "Sort: default" },
+    { sort: SectionSort.RatingHighToLow, label: "Rating: high to low" },
+    { sort: SectionSort.RatingLowToHigh, label: "Rating: low to high" },
+];
 
 export default memo(function SearchControls() {
     const activeTerm = useUserStore((user) => user.activeTerm);
@@ -23,7 +31,12 @@ export default memo(function SearchControls() {
     const searchFilters = useStore((store) => store.searchFilters);
     const addSearchFilter = useStore((store) => store.addSearchFilter);
     const setSearchText = useStore((store) => store.setSearchText);
+    const sectionSort = useStore((store) => store.sectionSort);
+    const setSectionSort = useStore((store) => store.setSectionSort);
     const setPopup = useStore((store) => store.setPopup);
+
+    // sorting by rating does nothing if we don't have any ratings
+    const canSort = (useInstructorRatings().data?.size ?? 0) > 0;
 
     const allTerms = useAllTerms();
     const queryClient = useQueryClient();
@@ -52,7 +65,11 @@ export default memo(function SearchControls() {
     if (allTerms === undefined) return <></>;
 
     return (
-        <div className={Css.searchControls}>
+        <div
+            className={classNames(Css.searchControls, {
+                [Css.withSort!]: canSort,
+            })}
+        >
             <div className={Css.termSelect}>
                 <Dropdown
                     selected={APIv4.stringifyTermIdentifier(activeTerm)}
@@ -175,6 +192,23 @@ export default memo(function SearchControls() {
                     }
                 />
             </div>
+            {canSort ? (
+                <div className={Css.sortSelect}>
+                    <Dropdown
+                        selected={
+                            SECTION_SORTS.find((s) => s.sort === sectionSort)!
+                                .label
+                        }
+                        choices={SECTION_SORTS.map((s) => s.label)}
+                        emptyPlaceholder="no sort selected"
+                        onSelect={(index) =>
+                            setSectionSort(SECTION_SORTS[index]!.sort)
+                        }
+                    />
+                </div>
+            ) : (
+                <></>
+            )}
             <button
                 className={classNames(AppCss.defaultButton, Css.filterButton)}
                 onClick={() => setPopup({ option: PopupOption.Filter })}

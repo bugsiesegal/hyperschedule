@@ -184,3 +184,15 @@ export async function getOfferingHistory(
     }
     return offeringHistory;
 }
+
+export async function getInstructorRatings(): Promise<
+    Map<string, APIv4.InstructorRating>
+> {
+    const data = await getData(
+        `${__API_URL__}/v4/instructor-ratings`,
+        APIv4.InstructorRating.array(),
+        "instructor ratings",
+    );
+
+    return new Map(data.map((rating) => [rating.name, rating]));
+}
