@@ -2,7 +2,10 @@ import { describe, test, expect, afterAll, beforeAll } from "@jest/globals";
 import request from "supertest";
 import { app } from "../src/server";
 import { updateSections } from "../src/db/models/course";
-import { updateInstructorRatings } from "../src/db/models/instructor-rating";
+import {
+    updateCourseRatings,
+    updateInstructorRatings,
+} from "../src/db/models/instructor-rating";
 import { setupDbHooks } from "./db/hooks";
 import { testSectionV4, testSectionV3 } from "./test-data";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
@@ -65,9 +68,36 @@ describe("Course routes", () => {
             avgDifficulty: 3,
             numRatings: 10,
             wouldTakeAgainPercent: null,
+            classes: [
+                {
+                    course: "CSCI 131 HM",
+                    avgRating: 4,
+                    avgDifficulty: 3,
+                    numRatings: 3,
+                },
+            ],
         };
         await updateInstructorRatings([rating]);
         const resp = await mockServer.get("/v4/instructor-ratings");
+        expect(resp.status).toEqual(200);
+        expect(resp.headers["content-type"]).toMatch(/json/);
+        expect(resp.body).toStrictEqual([rating]);
+    });
+
+    test("Route /v4/course-ratings", async () => {
+        const empty = await mockServer.get("/v4/course-ratings");
+        expect(empty.status).toEqual(200);
+        expect(empty.body).toStrictEqual([]);
+
+        const rating = {
+            course: "CSCI 131 HM",
+            avgRating: 4,
+            avgDifficulty: 3,
+            numRatings: 12,
+            numInstructors: 2,
+        };
+        await updateCourseRatings([rating]);
+        const resp = await mockServer.get("/v4/course-ratings");
         expect(resp.status).toEqual(200);
         expect(resp.headers["content-type"]).toMatch(/json/);
         expect(resp.body).toStrictEqual([rating]);

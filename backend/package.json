@@ -62,7 +62,6 @@
     "dev-node": "NODE_ENV=development DOTENV_CONFIG_PATH=.env.development node -r dotenv/config --enable-source-maps --import tsx",
     "serve": "pnpm dev-node ./src/index.ts",
     "fetcher": "pnpm dev-node ./src/fetcher.ts",
-    "fetch-ratings": "pnpm dev-node ./src/fetch-ratings.ts",
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' DOTENV_CONFIG_PATH=.env.development jest --setupFiles dotenv/config --onlyChanged",
     "start-db": "./start-dev-db.sh",
     "stop-db": "docker stop hyperschedule-mongodb",
@@ -73,7 +72,6 @@
     "ci:test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' DOTENV_CONFIG_PATH=.env.development jest --setupFiles dotenv/config --bail=0 --no-cache --ci",
     "prod-node": "NODE_ENV=production node --enable-source-maps --import tsx",
     "prod:serve": "pnpm prod-node ./src/index.ts | pnpm pino-pretty",
-    "prod:fetcher": "pnpm prod-node ./src/fetcher.ts | pnpm pino-pretty",
-    "prod:fetch-ratings": "pnpm prod-node ./src/fetch-ratings.ts | pnpm pino-pretty"
+    "prod:fetcher": "pnpm prod-node ./src/fetcher.ts | pnpm pino-pretty"
   }
 }

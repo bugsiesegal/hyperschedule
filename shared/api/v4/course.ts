@@ -162,6 +162,17 @@ export type Instructor = z.infer<typeof Instructor>;
  * An instructor's scores on Rate My Professors. Instructors without any reviews
  * or that we can't confidently identify don't have one of these at all.
  */
+// an instructor's reviews for one course, going by the class each review says
+// it's for
+export const InstructorClassRating = z.object({
+    // in the format of stringifyCourseCode, e.g. "CSCI 070 HM"
+    course: z.string(),
+    avgRating: z.number().min(0).max(5),
+    avgDifficulty: z.number().min(0).max(5),
+    numRatings: z.number().int().positive(),
+});
+export type InstructorClassRating = z.infer<typeof InstructorClassRating>;
+
 export const InstructorRating = z.object({
     // same as Instructor.name, without any leading or trailing whitespace
     name: z.string(),
@@ -172,8 +183,24 @@ export const InstructorRating = z.object({
     numRatings: z.number().int().positive(),
     // null if none of the reviews answered this question
     wouldTakeAgainPercent: z.number().min(0).max(100).nullable(),
+    // only the courses that we could tell some of their reviews are for. this
+    // is missing from ratings saved before class scores existed, and from
+    // responses that browsers cached back then
+    classes: InstructorClassRating.array().default([]),
 });
 export type InstructorRating = z.infer<typeof InstructorRating>;
+
+// every review of a course, no matter who taught it
+export const CourseRating = z.object({
+    // in the format of stringifyCourseCode, e.g. "CSCI 070 HM"
+    course: z.string(),
+    avgRating: z.number().min(0).max(5),
+    avgDifficulty: z.number().min(0).max(5),
+    numRatings: z.number().int().positive(),
+    // how many different instructors these reviews are for
+    numInstructors: z.number().int().positive(),
+});
+export type CourseRating = z.infer<typeof CourseRating>;
 
 export const Section = z.object({
     identifier: SectionIdentifier,

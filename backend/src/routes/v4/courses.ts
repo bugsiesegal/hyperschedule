@@ -4,7 +4,10 @@ import {
     computeOfferingHistory,
     getAllSections,
 } from "../../db/models/course";
-import { getAllInstructorRatings } from "../../db/models/instructor-rating";
+import {
+    getAllCourseRatings,
+    getAllInstructorRatings,
+} from "../../db/models/instructor-rating";
 import { App } from "@tinyhttp/app";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import { loadStatic } from "../../hmc-api/fetcher/utils";
@@ -94,6 +97,17 @@ courseApp.get("/offering-history/:term", async (request, response) => {
 
 courseApp.get("/instructor-ratings", async (request, response) => {
     const ratings = await getAllInstructorRatings();
+    return response
+        .header("Content-Type", "application/json")
+        .header(
+            "Cache-Control",
+            "public,s-max-age=3600,max-age=1800,stale-while-revalidate=3600,stale-if-error=86400",
+        )
+        .send(JSON.stringify(ratings));
+});
+
+courseApp.get("/course-ratings", async (request, response) => {
+    const ratings = await getAllCourseRatings();
     return response
         .header("Content-Type", "application/json")
         .header(

@@ -85,10 +85,19 @@
             }
         }
 
-        &.instructors .rating {
+        &.instructors .rating,
+        &.instructors .courseRating {
             margin-left: 0.5em;
             font-size: 0.875em;
             white-space: nowrap;
+        }
+
+        &.instructors .courseRating::before {
+            content: "· ";
+        }
+
+        &.ratings li {
+            list-style-type: none;
         }
 
         &.areas li {

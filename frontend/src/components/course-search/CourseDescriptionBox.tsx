@@ -1,6 +1,7 @@
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import {
     useCourseAreaDescription,
+    useCourseRatings,
     useInstructorRatings,
 } from "@hooks/api/query";
 import { useOfferingHistoryLookup } from "@hooks/history";
@@ -11,7 +12,12 @@ import Css from "./CourseDescriptionBox.module.css";
 import * as Feather from "react-feather";
 import { combineLocations } from "@lib/schedule";
 import { computeNonMuddCredits, computeMuddCredits } from "@lib/credits";
-import { rmpProfessorUrl } from "@lib/rating";
+import {
+    computeSectionRating,
+    rmpProfessorUrl,
+    sectionCourse,
+    type SectionRating,
+} from "@lib/rating";
 import SectionStatusBadge from "@components/common/SectionStatusBadge";
 import { useState } from "react";
 import { useAllTerms } from "@hooks/term";
@@ -54,26 +60,81 @@ const campusCss = [
 // 3 years if offered every semester
 const HISTORY_ENTRY_CUTOFF = 6;
 
-function InstructorRatingLink(props: { rating: APIv4.InstructorRating }) {
+function reviews(n: number): string {
+    return `${n} review${n === 1 ? "" : "s"}`;
+}
+
+function InstructorRatingLink(props: {
+    rating: APIv4.InstructorRating;
+    course: string;
+}) {
     const { avgRating, avgDifficulty, numRatings, wouldTakeAgainPercent } =
         props.rating;
+    const inCourse = props.rating.classes.find(
+        (c) => c.course === props.course,
+    );
     return (
-        <a
-            className={Css.rating}
-            href={rmpProfessorUrl(props.rating)}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="View on Rate My Professors"
-        >
-            <Feather.Star size="1em" fill="currentColor" />{" "}
-            {avgRating.toFixed(1)}/5 from {numRatings} review
-            {numRatings === 1 ? "" : "s"}, {avgDifficulty.toFixed(1)}/5
-            difficulty
-            {wouldTakeAgainPercent === null
-                ? ""
-                : `, ${Math.round(wouldTakeAgainPercent)}% would take again`}{" "}
-            <Feather.ExternalLink size="1em" />
-        </a>
+        <>
+            <a
+                className={Css.rating}
+                href={rmpProfessorUrl(props.rating)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View on Rate My Professors"
+            >
+                <Feather.Star size="1em" fill="currentColor" />{" "}
+                {avgRating.toFixed(1)}/5 from {reviews(numRatings)},{" "}
+                {avgDifficulty.toFixed(1)}/5 difficulty
+                {wouldTakeAgainPercent === null
+                    ? ""
+                    : `, ${Math.round(wouldTakeAgainPercent)}% would take again`}{" "}
+                <Feather.ExternalLink size="1em" />
+            </a>
+            {inCourse === undefined ? (
+                <></>
+            ) : (
+                <span className={Css.courseRating}>
+                    {inCourse.avgRating.toFixed(1)}/5 from{" "}
+                    {reviews(inCourse.numRatings)} of this course
+                </span>
+            )}
+        </>
+    );
+}
+
+// the score that course rows show and sort by, and every review of the course
+function RatingSection(props: {
+    sectionRating: SectionRating | null;
+    courseRating: APIv4.CourseRating | undefined;
+}) {
+    const { sectionRating, courseRating } = props;
+    if (sectionRating === null && courseRating === undefined) return <></>;
+    return (
+        <section className={Css.ratings}>
+            <h3>Rating</h3>
+            <ul>
+                {sectionRating === null ? (
+                    <></>
+                ) : (
+                    <li title="Combines the instructors' reviews for this course with their overall scores">
+                        <Feather.Star size="1em" fill="currentColor" />{" "}
+                        {sectionRating.avgRating.toFixed(1)}/5 for this section,{" "}
+                        {sectionRating.avgDifficulty.toFixed(1)}/5 difficulty
+                    </li>
+                )}
+                {courseRating === undefined ? (
+                    <></>
+                ) : (
+                    <li title="Every review of this course on Rate My Professors, no matter who taught it">
+                        {courseRating.avgRating.toFixed(1)}/5 for this course
+                        with any instructor, from{" "}
+                        {reviews(courseRating.numRatings)} of{" "}
+                        {courseRating.numInstructors} instructor
+                        {courseRating.numInstructors === 1 ? "" : "s"}
+                    </li>
+                )}
+            </ul>
+        </section>
     );
 }
 
@@ -83,6 +144,7 @@ export default memo(function CourseDescriptionBox(props: {
 }) {
     const descriptions = useCourseAreaDescription().data;
     const instructorRatings = useInstructorRatings().data;
+    const courseRatings = useCourseRatings().data;
     const offeringHistory = useOfferingHistoryLookup();
     const allTerms = useAllTerms();
     let minYear = CURRENT_TERM.year;
@@ -113,6 +175,12 @@ export default memo(function CourseDescriptionBox(props: {
     const instructors = props.section.instructors
         .map((i) => i.name.trim())
         .filter((s) => s !== "");
+
+    const course = sectionCourse(props.section);
+    const sectionRating =
+        instructorRatings === undefined
+            ? null
+            : computeSectionRating(props.section, instructorRatings);
 
     return (
         <div className={Css.root}>
@@ -162,13 +230,20 @@ export default memo(function CourseDescriptionBox(props: {
                                 {rating === undefined ? (
                                     <></>
                                 ) : (
-                                    <InstructorRatingLink rating={rating} />
+                                    <InstructorRatingLink
+                                        rating={rating}
+                                        course={course}
+                                    />
                                 )}
                             </li>
                         );
                     })}
                 </ul>
             </section>
+            <RatingSection
+                sectionRating={sectionRating}
+                courseRating={courseRatings?.get(course)}
+            />
             <section className={Css.areas}>
                 <h3>Course Areas</h3>
                 <ul>
