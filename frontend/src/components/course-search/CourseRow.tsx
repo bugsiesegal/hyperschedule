@@ -186,12 +186,17 @@ const RatingLabel = memo(function RatingLabel(props: {
         return <span className={classNames(Css.rating, Css.ratingWidth)} />;
 
     const score = rating.avgRating.toFixed(1);
+    const reviews = (n: number) => `${n} review${n === 1 ? "" : "s"}`;
     return (
         <span
             className={classNames(Css.rating, Css.ratingWidth)}
-            title={`Rate My Professors: ${score}/5 from ${rating.numRatings} review${
-                rating.numRatings === 1 ? "" : "s"
-            }`}
+            title={
+                rating.numClassRatings === 0
+                    ? `Rate My Professors: ${score}/5 from ${reviews(rating.numRatings)}`
+                    : `Rate My Professors: ${score}/5 for this course, from ${reviews(
+                          rating.numClassRatings,
+                      )} of it and ${rating.numRatings} overall`
+            }
         >
             <Feather.Star
                 className={Css.ratingStar}

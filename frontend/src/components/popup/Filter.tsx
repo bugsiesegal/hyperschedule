@@ -189,7 +189,7 @@ export default memo(function Filter() {
                 specified, only courses matching all the criteria will be shown
                 (logical AND).
                 {hasRatings
-                    ? " Professor filters use Rate My Professors and leave out courses without a rating. When a course has more than one rated professor, their scores are averaged and their reviews are added up."
+                    ? " Professor filters use Rate My Professors and leave out courses without a rating. The rating and difficulty combine each professor's reviews of that course with their overall score. When a course has more than one rated professor, their scores are averaged and their reviews are added up."
                     : ""}
             </div>
         </div>

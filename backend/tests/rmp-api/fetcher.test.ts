@@ -1,5 +1,8 @@
 import { describe, test, expect, jest, afterEach } from "@jest/globals";
-import { fetchAllTeachers } from "../../src/rmp-api/fetcher";
+import {
+    fetchAllTeachers,
+    fetchTeacherReviews,
+} from "../../src/rmp-api/fetcher";
 
 const SCHOOL_IDS = [400, 774, 889, 234, 768, 233];
 
@@ -149,10 +152,135 @@ describe("src/rmp-api/fetcher.ts", () => {
     });
 
     test("fails on a response in an unexpected shape", async () => {
+        mockFetch(() => new Response(JSON.stringify({ data: {} })));
+        await expect(fetchAllTeachers(0)).rejects.toThrow();
+    });
+
+    test("passes on the message of a GraphQL error", async () => {
         mockFetch(
             () =>
                 new Response(JSON.stringify({ errors: [{ message: "nope" }] })),
         );
-        await expect(fetchAllTeachers(0)).rejects.toThrow();
+        await expect(fetchAllTeachers(0)).rejects.toThrow(
+            "Rate My Professors returned an error: nope",
+        );
+    });
+});
+
+type ReviewRequest = { teacher: string; cursor: string; count: number };
+
+function review(legacyId: number, wouldTakeAgain: unknown = 1) {
+    return {
+        legacyId,
+        date: "2024-05-01 00:00:00 +0000 UTC",
+        class: "TEST101",
+        helpfulRating: 4,
+        clarityRating: 5,
+        difficultyRating: 3,
+        wouldTakeAgain,
+    };
+}
+
+function reviewsResponse(
+    reviews: unknown[] | null,
+    next: string | null = null,
+): Response {
+    return new Response(
+        JSON.stringify({
+            data: {
+                node:
+                    reviews === null
+                        ? null
+                        : {
+                              ratings: {
+                                  pageInfo: {
+                                      hasNextPage: next !== null,
+                                      endCursor: next,
+                                  },
+                                  edges: reviews.map((node) => ({ node })),
+                              },
+                          },
+            },
+        }),
+    );
+}
+
+function mockReviewFetch(respond: (request: ReviewRequest) => Response): {
+    requests: ReviewRequest[];
+} {
+    const requests: ReviewRequest[] = [];
+    jest.spyOn(globalThis, "fetch").mockImplementation((_, init) => {
+        const { variables } = JSON.parse(init!.body as string);
+        const request = {
+            teacher: Buffer.from(variables.id, "base64").toString(),
+            cursor: variables.cursor,
+            count: variables.count,
+        };
+        requests.push(request);
+        return Promise.resolve(respond(request));
+    });
+    return { requests };
+}
+
+describe("fetchTeacherReviews", () => {
+    test("asks for the right instructor and follows every page", async () => {
+        const { requests } = mockReviewFetch(({ cursor }) =>
+            cursor === ""
+                ? reviewsResponse([review(1), review(2)], "next")
+                : reviewsResponse([review(3)]),
+        );
+        const reviews = await fetchTeacherReviews(1234, 0);
+        expect(requests.map((r) => [r.teacher, r.cursor])).toStrictEqual([
+            ["Teacher-1234", ""],
+            ["Teacher-1234", "next"],
+        ]);
+        expect(reviews!.map((r) => r.legacyId)).toStrictEqual([1, 2, 3]);
+    });
+
+    test("reads would take again as yes, no or unanswered", async () => {
+        mockReviewFetch(() =>
+            reviewsResponse([
+                review(1, 1),
+                review(2, 0),
+                review(3, null),
+                review(4, true),
+            ]),
+        );
+        const reviews = await fetchTeacherReviews(1, 0);
+        expect(reviews!.map((r) => r.wouldTakeAgain)).toStrictEqual([
+            true,
+            false,
+            null,
+            true,
+        ]);
+    });
+
+    test("returns null for an instructor that no longer exists", async () => {
+        mockReviewFetch(() => reviewsResponse(null));
+        expect(await fetchTeacherReviews(1, 0)).toBeNull();
+    });
+
+    test("stops eventually if there is always a next page", async () => {
+        const { requests } = mockReviewFetch(() => reviewsResponse([], "same"));
+        await fetchTeacherReviews(1, 0);
+        expect(requests.length).toBeLessThanOrEqual(30);
+    });
+
+    test("fails on a bad status or a GraphQL error", async () => {
+        mockReviewFetch(() => new Response("nope", { status: 429 }));
+        await expect(fetchTeacherReviews(1, 0)).rejects.toThrow("429");
+
+        jest.restoreAllMocks();
+        mockReviewFetch(
+            () =>
+                new Response(
+                    JSON.stringify({
+                        errors: [{ message: 'Cannot query field "x"' }],
+                    }),
+                ),
+        );
+        await expect(fetchTeacherReviews(1, 0)).rejects.toThrow(
+            'Cannot query field "x"',
+        );
     });
 });

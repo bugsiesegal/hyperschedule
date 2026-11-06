@@ -24,6 +24,12 @@ const RMP_SCHOOL_IDS = {
     [APIv4.School.CGU]: 233,
 };
 
+export function schoolOfRmpId(legacyId: number): APIv4.School | undefined {
+    for (const [school, id] of Object.entries(RMP_SCHOOL_IDS))
+        if (id === legacyId) return school as APIv4.School;
+    return undefined;
+}
+
 const PAGE_SIZE = 500;
 // no school has anywhere near this many instructors. this is only here so a bug
 // on either side can't turn into us endlessly sending requests to someone else
@@ -76,12 +82,10 @@ const RmpTeachersResponse = z.object({
     }),
 });
 
-async function fetchTeachersPage(
-    schoolId: number,
-    cursor: string,
-): Promise<
-    z.infer<typeof RmpTeachersResponse>["data"]["newSearch"]["teachers"]
-> {
+async function postQuery(
+    query: string,
+    variables: Record<string, unknown>,
+): Promise<unknown> {
     const res = await fetch(RMP_ENDPOINT, {
         method: "POST",
         headers: {
@@ -89,26 +93,40 @@ async function fetchTeachersPage(
             "Content-Type": "application/json",
             "User-Agent": "HyperscheduleBot",
         },
-        body: JSON.stringify({
-            query: TEACHERS_QUERY,
-            variables: {
-                count: PAGE_SIZE,
-                cursor,
-                query: {
-                    text: "",
-                    schoolID: Buffer.from(`School-${schoolId}`).toString(
-                        "base64",
-                    ),
-                    // otherwise we can get results from other schools
-                    fallback: false,
-                },
-            },
-        }),
+        body: JSON.stringify({ query, variables }),
     });
     if (!res.ok)
         throw Error(`Rate My Professors returned status ${res.status}`);
 
-    return RmpTeachersResponse.parse(await res.json()).data.newSearch.teachers;
+    const body: unknown = await res.json();
+    // GraphQL reports problems such as a field that doesn't exist with a 200
+    const errors = z
+        .object({ errors: z.object({ message: z.string() }).array() })
+        .safeParse(body);
+    if (errors.success && errors.data.errors.length > 0)
+        throw Error(
+            `Rate My Professors returned an error: ${errors.data.errors[0]!.message}`,
+        );
+    return body;
+}
+
+async function fetchTeachersPage(
+    schoolId: number,
+    cursor: string,
+): Promise<
+    z.infer<typeof RmpTeachersResponse>["data"]["newSearch"]["teachers"]
+> {
+    const body = await postQuery(TEACHERS_QUERY, {
+        count: PAGE_SIZE,
+        cursor,
+        query: {
+            text: "",
+            schoolID: Buffer.from(`School-${schoolId}`).toString("base64"),
+            // otherwise we can get results from other schools
+            fallback: false,
+        },
+    });
+    return RmpTeachersResponse.parse(body).data.newSearch.teachers;
 }
 
 /**
@@ -146,4 +164,94 @@ export async function fetchAllTeachers(
         logger.info("Fetched %d teachers for %s", schoolTeachers, school);
     }
     return teachers;
+}
+
+const REVIEW_PAGE_SIZE = 100;
+// the most-reviewed instructors here have a few hundred reviews at most, so this
+// is only a guard against requesting forever
+const MAX_REVIEW_PAGES = 30;
+
+const REVIEWS_QUERY = `
+query TeacherReviews($id: ID!, $count: Int!, $cursor: String) {
+    node(id: $id) {
+        ... on Teacher {
+            ratings(first: $count, after: $cursor) {
+                pageInfo { hasNextPage endCursor }
+                edges {
+                    node {
+                        legacyId
+                        date
+                        class
+                        helpfulRating
+                        clarityRating
+                        difficultyRating
+                        wouldTakeAgain
+                    }
+                }
+            }
+        }
+    }
+}`;
+
+const RmpReview = z.object({
+    legacyId: z.number(),
+    date: z.string(),
+    // typed in by whoever wrote the review, so this can be anything
+    class: z.string().nullable(),
+    helpfulRating: z.number().nullable(),
+    clarityRating: z.number().nullable(),
+    difficultyRating: z.number().nullable(),
+    // this isn't documented anywhere, so we accept either 1/0 or true/false
+    wouldTakeAgain: z
+        .union([z.number(), z.boolean()])
+        .nullable()
+        .transform((v) => (v === null ? null : Boolean(v))),
+});
+export type RmpReview = z.infer<typeof RmpReview>;
+
+const RmpReviewsResponse = z.object({
+    data: z.object({
+        // null if the instructor was removed since we got the list of them
+        node: z
+            .object({
+                ratings: z.object({
+                    pageInfo: z.object({
+                        hasNextPage: z.boolean(),
+                        endCursor: z.string().nullable(),
+                    }),
+                    edges: z.object({ node: RmpReview }).array(),
+                }),
+            })
+            .nullable(),
+    }),
+});
+
+/**
+ * Fetches every review of a single instructor, or null if they no longer exist.
+ * Only the scores and the class are kept, never what the review says.
+ */
+export async function fetchTeacherReviews(
+    legacyId: number,
+    delayMs: number = 1000,
+): Promise<RmpReview[] | null> {
+    const id = Buffer.from(`Teacher-${legacyId}`).toString("base64");
+    const reviews: RmpReview[] = [];
+    let cursor = "";
+    for (let page = 0; page < MAX_REVIEW_PAGES; page++) {
+        const body = await postQuery(REVIEWS_QUERY, {
+            id,
+            count: REVIEW_PAGE_SIZE,
+            cursor,
+        });
+        await setTimeout(delayMs);
+
+        const { node } = RmpReviewsResponse.parse(body).data;
+        if (node === null) return null;
+        for (const edge of node.ratings.edges) reviews.push(edge.node);
+
+        const { hasNextPage, endCursor } = node.ratings.pageInfo;
+        if (!hasNextPage || endCursor === null) break;
+        cursor = endCursor;
+    }
+    return reviews;
 }

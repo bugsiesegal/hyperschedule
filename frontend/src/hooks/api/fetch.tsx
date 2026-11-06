@@ -196,3 +196,16 @@ export async function getInstructorRatings(): Promise<
 
     return new Map(data.map((rating) => [rating.name, rating]));
 }
+
+// keyed by course code, in the format of stringifyCourseCode
+export async function getCourseRatings(): Promise<
+    Map<string, APIv4.CourseRating>
+> {
+    const data = await getData(
+        `${__API_URL__}/v4/course-ratings`,
+        APIv4.CourseRating.array(),
+        "course ratings",
+    );
+
+    return new Map(data.map((rating) => [rating.course, rating]));
+}

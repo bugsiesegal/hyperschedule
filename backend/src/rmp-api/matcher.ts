@@ -51,10 +51,13 @@ function middleNamesAgree(a: string[], b: string[]): boolean {
  * It's common for someone to have multiple entries, for example from teaching on
  * more than one campus, in which case we use the entry with the most reviews.
  */
+// a rating from a name match alone, which doesn't know about classes yet
+export type MatchedRating = Omit<APIv4.InstructorRating, "classes">;
+
 export function matchInstructors(
     names: string[],
     teachers: RmpTeacher[],
-): APIv4.InstructorRating[] {
+): MatchedRating[] {
     const index = new Map<
         string,
         { middle: string[]; teacher: RmpTeacher }[]
@@ -71,7 +74,7 @@ export function matchInstructors(
         else existing.push(entry);
     }
 
-    const ratings: APIv4.InstructorRating[] = [];
+    const ratings: MatchedRating[] = [];
     for (const name of new Set(names.map((n) => n.trim()))) {
         const parsed = parseName(name);
         if (parsed === null) continue;

@@ -7,6 +7,7 @@ import {
     getOfferingHistory,
     getSectionsForTerms,
     getInstructorRatings,
+    getCourseRatings,
 } from "@hooks/api/fetch";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import * as ReactQuery from "@tanstack/react-query";
@@ -88,6 +89,17 @@ export function useInstructorRatings(): UseQueryResult<
     return useQuery({
         queryKey: ["instructor ratings"],
         queryFn: getInstructorRatings,
+        staleTime: 24 * 60 * 60 * 1000, // 1 day
+        refetchInterval: 24 * 60 * 60 * 1000,
+    });
+}
+
+export function useCourseRatings(): UseQueryResult<
+    Map<string, APIv4.CourseRating>
+> {
+    return useQuery({
+        queryKey: ["course ratings"],
+        queryFn: getCourseRatings,
         staleTime: 24 * 60 * 60 * 1000, // 1 day
         refetchInterval: 24 * 60 * 60 * 1000,
     });
