@@ -6,6 +6,8 @@ import {
     getAllInstructorNames,
     getAllInstructorRatings,
     getCoursesByInstructor,
+    getRatingsRefreshedAt,
+    setRatingsRefreshedAt,
     updateCourseRatings,
     updateInstructorRatings,
 } from "../../src/db/models/instructor-rating";
@@ -99,6 +101,16 @@ describe("db/models/instructor-rating", () => {
         expect(names.sort()).toStrictEqual(
             testSectionV4.instructors.map((i) => i.name).sort(),
         );
+    });
+
+    test("remembers when ratings were last refreshed", async () => {
+        expect(await getRatingsRefreshedAt()).toBeNull();
+        const first = new Date("2026-11-01T00:00:00Z");
+        await setRatingsRefreshedAt(first);
+        expect(await getRatingsRefreshedAt()).toStrictEqual(first);
+        const second = new Date("2026-11-08T00:00:00Z");
+        await setRatingsRefreshedAt(second);
+        expect(await getRatingsRefreshedAt()).toStrictEqual(second);
     });
 
     test("course ratings can be stored, replaced, but not wiped", async () => {

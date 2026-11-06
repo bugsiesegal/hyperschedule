@@ -8,7 +8,8 @@ const logger = createLogger("rmp.fetcher");
 /**
  * Rate My Professors doesn't have a public API, so this is the GraphQL endpoint
  * that their website uses. Its terms of use don't allow automated access without
- * their permission, so make sure that we have it before running this.
+ * their permission. The fetcher refreshes ratings from here once a week, see
+ * rmp-api/scheduler.ts, and remove that if they ask us to stop.
  */
 const RMP_ENDPOINT = "https://www.ratemyprofessors.com/graphql";
 // not a secret, this is `test:test` and it's hardcoded into their website

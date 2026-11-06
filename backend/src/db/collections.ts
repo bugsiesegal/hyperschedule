@@ -19,11 +19,18 @@ export type DBCourseRating = Omit<APIv4.CourseRating, "course"> & {
     _id: string;
 };
 
+// when a scheduled job last finished successfully, keyed by the job's name
+export type DBJob = {
+    _id: string;
+    lastSuccess: Date;
+};
+
 export interface DBCollections {
     users: Collection<APIv4.ServerUser>;
     sections: Collection<DBSection>;
     instructorRatings: Collection<DBInstructorRating>;
     courseRatings: Collection<DBCourseRating>;
+    jobs: Collection<DBJob>;
 }
 
 /* we use getters to defer the collection initialization to the first
@@ -58,6 +65,12 @@ Object.defineProperties(obj, {
         get(): Collection<DBCourseRating> {
             if (!connector.connected) throw Error("Database not connected");
             return connector.db.collection<DBCourseRating>("courseRatings");
+        },
+    },
+    jobs: {
+        get(): Collection<DBJob> {
+            if (!connector.connected) throw Error("Database not connected");
+            return connector.db.collection<DBJob>("jobs");
         },
     },
 });

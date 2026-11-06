@@ -103,3 +103,19 @@ export async function getCoursesByInstructor(): Promise<
         .toArray();
     return new Map(rows.map((r) => [r._id, r.courses]));
 }
+
+const RATINGS_JOB = "instructor-ratings";
+
+// when the ratings were last refreshed successfully, or null if they never were
+export async function getRatingsRefreshedAt(): Promise<Date | null> {
+    const job = await collections.jobs.findOne({ _id: RATINGS_JOB });
+    return job?.lastSuccess ?? null;
+}
+
+export async function setRatingsRefreshedAt(date: Date): Promise<void> {
+    await collections.jobs.replaceOne(
+        { _id: RATINGS_JOB },
+        { lastSuccess: date },
+        { upsert: true },
+    );
+}
